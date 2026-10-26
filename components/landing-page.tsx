@@ -6,6 +6,7 @@ import {
   CloudCog, Code2, Database, Gauge, Menu, Orbit, Radar, ShieldCheck,
   TerminalSquare, WalletCards, X, Zap,
 } from "lucide-react";
+import { ScrollProgress } from "./scroll-progress";
 
 const services = [
   {
@@ -95,6 +96,7 @@ export function LandingPage() {
 
   return (
     <main className="overflow-hidden">
+      <ScrollProgress />
       <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#071018]/90 text-white backdrop-blur-xl">
         <div className="shell flex h-[72px] items-center justify-between">
           <button onClick={() => go("top")} className="flex items-center gap-3" aria-label="Orbyte Cloud home">
