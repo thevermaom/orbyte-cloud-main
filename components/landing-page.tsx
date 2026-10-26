@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { celebrate } from "../lib/confetti";
+import { useActiveSection } from "./use-active-section";
 import {
   ArrowDownRight, ArrowRight, Boxes, Check, ChevronDown, CircleGauge,
   CloudCog, Code2, Database, Gauge, Menu, Orbit, Radar, ShieldCheck,
@@ -60,8 +61,15 @@ function scrollTo(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+const navLinks = [
+  ["Capabilities", "services"], ["Compliance", "compliance"], ["How we work", "approach"],
+  ["Readiness scan", "scan"], ["FAQ", "faq"],
+] as const;
+const navSectionIds = navLinks.map(([, id]) => id);
+
 export function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const activeSection = useActiveSection(navSectionIds);
   const [activeService, setActiveService] = useState(0);
   const [scan, setScan] = useState<number[]>([0, 0, 0]);
   const [submittedScan, setSubmittedScan] = useState(false);
@@ -114,11 +122,9 @@ export function LandingPage() {
             <span className="text-lg font-bold tracking-[-.04em]">ORBYTE<span className="text-[var(--lime)]">/</span>CLOUD</span>
           </button>
           <nav className="hidden items-center gap-7 text-sm text-white/70 md:flex" aria-label="Primary navigation">
-            <button onClick={() => go("services")} className="hover:text-white">Capabilities</button>
-            <button onClick={() => go("compliance")} className="hover:text-white">Compliance</button>
-            <button onClick={() => go("approach")} className="hover:text-white">How we work</button>
-            <button onClick={() => go("scan")} className="hover:text-white">Readiness scan</button>
-            <button onClick={() => go("faq")} className="hover:text-white">FAQ</button>
+            {navLinks.map(([label, id]) => (
+              <button key={id} onClick={() => go(id)} aria-current={activeSection === id ? "location" : undefined} className={`relative py-1 transition hover:text-white after:absolute after:inset-x-0 after:-bottom-1 after:h-0.5 after:origin-left after:rounded-full after:bg-[var(--lime)] after:transition-transform after:duration-300 ${activeSection === id ? "text-white after:scale-x-100" : "after:scale-x-0"}`}>{label}</button>
+            ))}
           </nav>
           <button onClick={() => go("contact")} className="hidden rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-[#071018] transition hover:bg-[var(--lime)] md:block">Talk to an architect</button>
           <button onClick={() => setMenuOpen(!menuOpen)} className="grid h-10 w-10 place-items-center rounded-full border border-white/20 md:hidden" aria-label="Toggle menu">
