@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { celebrate } from "../lib/confetti";
 import {
   ArrowDownRight, ArrowRight, Boxes, Check, ChevronDown, CircleGauge,
   CloudCog, Code2, Database, Gauge, Menu, Orbit, Radar, ShieldCheck,
@@ -75,6 +76,10 @@ export function LandingPage() {
     setMenuOpen(false);
     scrollTo(id);
   }
+
+  useEffect(() => {
+    if (formState === "success") celebrate(formRef.current);
+  }, [formState]);
 
   async function submitLead(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
