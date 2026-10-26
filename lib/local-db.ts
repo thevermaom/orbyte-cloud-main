@@ -33,6 +33,10 @@ if (process.env.NODE_ENV !== "production") {
   globalDatabase.__orbyteDatabase = database;
 }
 
+// `next build` loads this module in several workers at once; wait for the
+// write lock instead of failing with "database is locked".
+database.exec("PRAGMA busy_timeout = 5000");
+
 database.exec(
   "CREATE TABLE IF NOT EXISTS consultation_requests (" +
     "id INTEGER PRIMARY KEY AUTOINCREMENT," +
