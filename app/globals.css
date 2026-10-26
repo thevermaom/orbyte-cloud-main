@@ -45,6 +45,14 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .pulse-ring { animation: pulse-ring 2.2s ease-in-out infinite; }
 .reveal { animation: reveal .55s ease both; }
 @keyframes reveal { from { opacity: 0; transform: translateY(12px); } }
+/* Scroll reveal (components/scroll-reveal.tsx). Uses `translate`, not `transform`,
+   so it does not fight the .lift hover effect; the transition list keeps .lift's. */
+[data-reveal] {
+  transition: opacity .7s ease var(--reveal-delay, 0ms), translate .7s cubic-bezier(.2,.7,.2,1) var(--reveal-delay, 0ms),
+    transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+}
+[data-reveal="pending"] { opacity: 0; translate: 0 28px; }
+[data-reveal="done"] { opacity: 1; translate: 0 0; }
 
 @media (max-width: 720px) {
   .shell { width: min(100% - 24px, 1180px); }
