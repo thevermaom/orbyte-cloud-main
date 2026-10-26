@@ -1,0 +1,109 @@
+# CI/CD for Orbyte Cloud
+#
+# CI  - runs on every push and pull request: install, lint, build.
+# CD  - runs only on pushes to main, and only if CI passed:
+#       SSH into the AWS server, pull the exact commit, rebuild, restart pm2.
+#
+# Required repository secrets (Settings > Secrets and variables > Actions):
+#   DEPLOY_HOST         server address, e.g. 13.211.165.34
+#   DEPLOY_USER         SSH user, e.g. ubuntu
+#   DEPLOY_SSH_KEY      private key of the dedicated deploy keypair
+#   DEPLOY_KNOWN_HOSTS  server host key line, so the runner can verify the server
+
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: 1
+
+jobs:
+  ci:
+    name: Lint and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+  deploy:
+    name: Deploy to AWS
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # Never run two deploys at once; a newer push waits for the current one.
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+    steps:
+      - name: Set up SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Pull, build and restart on server
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "bash -s -- ${{ github.sha }}" <<'EOF'
+          set -euo pipefail
+          SHA="$1"
+          cd ~/orbyte-cloud-main
+
+          echo "==> Fetching $SHA"
+          git fetch --quiet origin main
+          git reset --quiet --hard "$SHA"
+
+          echo "==> Installing dependencies"
+          npm ci --no-audit --no-fund
+
+          echo "==> Building"
+          NEXT_TELEMETRY_DISABLED=1 npm run build
+
+          echo "==> Restarting app"
+          pm2 restart orbyte --update-env
+          pm2 save
+
+          echo "==> Health check"
+          for i in $(seq 1 15); do
+            if curl -fsS -o /dev/null http://127.0.0.1:3000/; then
+              echo "App is up at $(git rev-parse --short HEAD)"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "App did not respond after restart" >&2
+          pm2 logs orbyte --lines 40 --nostream
+          exit 1
+          EOF
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
