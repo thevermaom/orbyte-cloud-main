@@ -9,6 +9,9 @@
 #   DEPLOY_USER         SSH user, e.g. ubuntu
 #   DEPLOY_SSH_KEY      private key of the dedicated deploy keypair
 #   DEPLOY_KNOWN_HOSTS  server host key line, so the runner can verify the server
+#
+# Deploys are switched on by the repository variable DEPLOY_ENABLED=true,
+# so CI can run before the server side is set up.
 
 name: CI/CD
 
@@ -49,7 +52,7 @@ jobs:
   deploy:
     name: Deploy to AWS
     needs: ci
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     # Never run two deploys at once; a newer push waits for the current one.
     concurrency:
